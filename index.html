@@ -6249,7 +6249,26 @@ console.log('📁 المسار:', window.location.pathname);
                 document.getElementById('bgStatusText').textContent = 'التطبيق جاهز للمكالمات في الخلفية';
             }
         });
-
+ (function fixPaths() {
+        // تحديد المسار الصحيح
+        const pathParts = window.location.pathname.split('/');
+        const repoName = pathParts.length > 1 && pathParts[1] ? pathParts[1] : '';
+        const basePath = repoName ? '/' + repoName + '/' : '/';
+        
+        console.log('📁 اسم المستودع:', repoName);
+        console.log('📁 المسار الأساسي:', basePath);
+        
+        // تحديث manifest إذا كان موجوداً
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+            manifestLink.href = basePath + 'manifest.json';
+            console.log('✅ تم تحديث manifest:', manifestLink.href);
+        }
+        
+        // حفظ المسار في متغير عام
+        window.__BASE_PATH = basePath;
+        window.__REPO_NAME = repoName;
+    })();
         // ================================================================
         //                      تهيئة التطبيق
         // ================================================================
