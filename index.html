@@ -5394,57 +5394,121 @@ function rejectIncomingCall() {
         // ================================================================
 let deferredPrompt = null;
 
-// ✅ تسجيل Service Worker
+// ✅ تحديد المسار الصحيح تلقائياً
+function getBasePath() {
+    // الحصول على المسار الكامل
+    const pathname = window.location.pathname;
+    
+    // إذا كان المسار ينتهي بـ /، استخدمه كما هو
+    if (pathname.endsWith('/')) {
+        return pathname;
+    }
+    
+    // وإلا أضف / في النهاية
+    return pathname + '/';
+}
+
+// ✅ تسجيل Service Worker بالطريقة الصحيحة
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        // تحديد المسار الصحيح في GitHub Pages
-        const basePath = window.location.pathname.endsWith('/') 
-            ? window.location.pathname 
-            : window.location.pathname + '/';
+        const basePath = getBasePath();
         
-        console.log('📁 المسار الأساسي:', basePath);
+        // استخدام المسار الكامل
+        const swUrl = window.location.origin + basePath + 'sw.js';
         
-        navigator.serviceWorker.register(basePath + 'sw.js', {
+        console.log('📁 المسار الكامل:', swUrl);
+        console.log('📁 النطاق:', basePath);
+        
+        navigator.serviceWorker.register(swUrl, {
             scope: basePath
         })
         .then((registration) => {
             console.log('✅ Service Worker مسجل بنجاح');
             console.log('📌 النطاق:', registration.scope);
+            
+            // التحقق من التثبيت
+            checkInstallation();
         })
         .catch((error) => {
             console.error('❌ فشل التسجيل:', error);
+            // محاولة بديلة
+            tryAlternativeRegistration();
         });
     }
 }
 
-// ✅ حدث التثبيت (الأهم لظهور الزر)
+// ✅ محاولة بديلة للتسجيل
+function tryAlternativeRegistration() {
+    if ('serviceWorker' in navigator) {
+        const basePath = getBasePath();
+        const swUrl = basePath + 'sw.js';
+        
+        navigator.serviceWorker.register(swUrl)
+        .then((registration) => {
+            console.log('✅ Service Worker مسجل (بديل):', registration.scope);
+        })
+        .catch((error) => {
+            console.error('❌ فشل التسجيل البديل:', error);
+        });
+    }
+}
+
+// ✅ التحقق من التثبيت
+function checkInstallation() {
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('✅ التطبيق يعمل كـ PWA');
+        document.body.classList.add('installed');
+    } else {
+        console.log('📱 التطبيق يعمل في المتصفح');
+    }
+}
+
+// ✅ حدث التثبيت
 window.addEventListener('beforeinstallprompt', (e) => {
-    // منع ظهور النافذة الافتراضية
     e.preventDefault();
-    
-    // حفظ الحدث لاستخدامه لاحقاً
     deferredPrompt = e;
-    
     console.log('✅ حدث beforeinstallprompt تم تفعيله');
     
-    // ✅ إظهار زر التثبيت
-    const installPrompt = document.getElementById('installPrompt');
-    if (installPrompt) {
-        installPrompt.innerHTML = `
-            <div>
-                <strong style="color: #fff;">📱 تثبيت التطبيق</strong>
-                <p style="color: rgba(255,255,255,0.5); font-size: 0.85rem; margin: 4px 0 0;">
-                    احصل على تجربة أفضل مع تطبيق VideoChat Pro
-                </p>
-            </div>
-            <button class="btn-install" onclick="installApp()">
-                <i class="fas fa-download"></i> تثبيت
-            </button>
-            <button class="btn-close-install" onclick="closeInstallPrompt()">✕</button>
-        `;
-        installPrompt.classList.add('show');
-    }
+    // إظهار زر التثبيت
+    showInstallButton();
 });
+
+// ✅ إظهار زر التثبيت
+function showInstallButton() {
+    const installPrompt = document.getElementById('installPrompt');
+    if (!installPrompt) return;
+    
+    installPrompt.innerHTML = `
+        <div style="flex: 1;">
+            <strong style="color: #fff; font-size: 1rem;">📱 تثبيت التطبيق</strong>
+            <p style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin: 2px 0 0;">
+                احصل على تجربة أفضل مع VideoChat Pro
+            </p>
+        </div>
+        <button class="btn-install" onclick="installApp()" style="
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        ">
+            <i class="fas fa-download"></i> تثبيت
+        </button>
+        <button onclick="closeInstallPrompt()" style="
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.5);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 5px;
+        ">✕</button>
+    `;
+    installPrompt.classList.add('show');
+}
 
 // ✅ دالة التثبيت
 function installApp() {
@@ -5468,68 +5532,51 @@ function installApp() {
 // ✅ إغلاق نافذة التثبيت
 function closeInstallPrompt() {
     document.getElementById('installPrompt').classList.remove('show');
+    localStorage.setItem('installPromptClosed', 'true');
 }
 
-// ✅ تشغيل التسجيل عند تحميل الصفحة
+// ✅ تشغيل عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 بدء تشغيل التطبيق');
     registerServiceWorker();
     
-    // محاولة إظهار الزر بعد 5 ثواني إذا لم يظهر تلقائياً
+    // التحقق من وضع التثبيت
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('✅ التطبيق مثبت ويعمل كـ PWA');
+        document.getElementById('installPrompt')?.classList.remove('show');
+    }
+    
+    // محاولة إظهار الزر بعد 3 ثواني
     setTimeout(() => {
         const installPrompt = document.getElementById('installPrompt');
         if (installPrompt && !installPrompt.classList.contains('show') && deferredPrompt) {
             installPrompt.classList.add('show');
         }
-    }, 5000);
+    }, 3000);
 });
 
-// ✅ إذا لم يعمل الزر التلقائي، استخدم زر بديل
-setTimeout(() => {
-    if (!document.getElementById('installPrompt').classList.contains('show')) {
-        // إضافة زر يدوي في أسفل الصفحة
-        const manualBtn = document.createElement('div');
-        manualBtn.id = 'manualInstallBtn';
-        manualBtn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            padding: 15px 30px;
-            font-family: 'Tajawal', sans-serif;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
-            z-index: 999999;
-            display: none;
-            align-items: center;
-            gap: 10px;
-        `;
-        manualBtn.innerHTML = `<i class="fas fa-download"></i> تثبيت التطبيق`;
-        manualBtn.onclick = installApp;
-        document.body.appendChild(manualBtn);
-        
-        // إظهار الزر اليدوي إذا كان التثبيت متاحاً
-        if (deferredPrompt) {
-            manualBtn.style.display = 'flex';
-        }
+// ✅ مراقبة تغيير وضع العرض
+window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+    if (e.matches) {
+        console.log('✅ تم تثبيت التطبيق');
+        document.getElementById('installPrompt')?.classList.remove('show');
     }
-}, 3000);
+});
 
-        if (localStorage.getItem('installPromptClosed') === 'true') {
-            document.getElementById('installPrompt').classList.remove('show');
-        }
+// ✅ حدث نجاح التثبيت
+window.addEventListener('appinstalled', () => {
+    console.log('✅ تم تثبيت التطبيق بنجاح');
+    document.getElementById('installPrompt')?.classList.remove('show');
+    showNotification('🎉 تم تثبيت التطبيق بنجاح!', 'success');
+});
 
-        window.addEventListener('appinstalled', () => {
-            console.log('✅ تم تثبيت التطبيق بنجاح');
-            document.getElementById('installPrompt').classList.remove('show');
-            showNotification('🎉 تم تثبيت التطبيق بنجاح!', 'success');
-        });
+// ✅ التحقق من الإغلاق السابق
+if (localStorage.getItem('installPromptClosed') === 'true') {
+    document.getElementById('installPrompt')?.classList.remove('show');
+}
 
+console.log('✅ نظام التثبيت جاهز!');
+console.log('📁 المسار:', window.location.pathname);
         // ================================================================
         //                      مشاركة التطبيق
         // ================================================================
