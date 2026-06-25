@@ -1,38 +1,49 @@
 // sw.js
-const CACHE_NAME = 'videochat-v1';
+const CACHE_NAME = 'videochat-v2';
+const BASE_PATH = self.location.pathname.replace(/\/[^/]*$/, '/') || '/';
+
+// الملفات التي سيتم تخزينها مؤقتاً
 const urlsToCache = [
-    '/',
-    '/index.html',
-    '/manifest.json'
+    BASE_PATH,
+    BASE_PATH + 'index.html',
+    BASE_PATH + 'manifest.json',
+    'https://ui-avatars.com/api/?name=VC&background=667eea&color=fff&size=192',
+    'https://ui-avatars.com/api/?name=VC&background=667eea&color=fff&size=512'
 ];
 
 self.addEventListener('install', (event) => {
+    console.log('📦 تثبيت Service Worker');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
                 console.log('✅ تم فتح الكاش');
                 return cache.addAll(urlsToCache);
             })
+            .catch((error) => {
+                console.error('❌ فشل في تخزين الملفات:', error);
+            })
     );
     self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
+    console.log('✅ تفعيل Service Worker');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     if (cacheName !== CACHE_NAME) {
+                        console.log('🗑️ حذف الكاش القديم:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
         })
     );
-    self.clients.claim();
+    return self.clients.claim();
 });
 
-// استقبال إشعارات المكالمات
+// استقبال المكالمات
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'INCOMING_CALL') {
         const { callerName, callerId, callerAvatar, callType } = event.data.payload;
@@ -59,7 +70,7 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// التعامل مع الضغط على الإشعار
+// التعامل مع الإشعارات
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const action = event.action;
@@ -79,7 +90,7 @@ self.addEventListener('notificationclick', (event) => {
                             return;
                         }
                     }
-                    return clients.openWindow('/')
+                    return clients.openWindow(BASE_PATH)
                         .then((client) => {
                             client.postMessage({
                                 type: 'ANSWER_CALL',
@@ -111,7 +122,39 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
-                return response || fetch(event.request);
+                // إذا وجد في الكاش، أعد الكاش
+                if (response) {
+                    return response;
+                }
+                
+                // وإلا، حاول من الشبكة
+                return fetch(event.request)
+                    .then((response) => {
+                        // لا تخزن طلبات غير ناجحة
+                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                            return response;
+                        }
+                        
+                        // تخزين النسخة في الكاش
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME)
+                            .then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            });
+                        
+                        return response;
+                    })
+                    .catch((error) => {
+                        console.error('❌ فشل في جلب:', event.request.url);
+                        // إرجاع صفحة الخطأ
+                        return new Response('⚠️ غير متصل بالإنترنت', {
+                            status: 503,
+                            statusText: 'Service Unavailable'
+                        });
+                    });
             })
     );
 });
+
+console.log('✅ Service Worker جاهز!');
+console.log('📁 المسار الأساسي:', BASE_PATH);
