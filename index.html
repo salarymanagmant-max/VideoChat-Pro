@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- ====== إعدادات PWA (مأخوذة من المشروع الناجح) ====== -->
-    <link rel="manifest" href="./manifest.json?v=1">
+    <link rel="manifest" href="./manifest.json?v=6">
     <meta name="theme-color" content="#667eea">
     
     <!-- أيقونات PWA -->
@@ -4817,14 +4817,106 @@ function answerIncomingCall() {
         return;
     }
     
-    const { caller, callType } = window.incomingCallData;
+    const { caller, callType, call } = window.incomingCallData;
     window.incomingCallData = null;
     
-    // ✅ بدء المكالمة
-    if (callType === 'audio') {
-        startAudioCall(caller.UserID);
+    // ✅ منع إرسال إشعار مرة أخرى
+    callDirection = 'واردة';
+    
+    // ✅ استخدام كائن المكالمة الموجود بدلاً من بدء مكالمة جديدة
+    if (call) {
+        // الرد على المكالمة الموجودة
+        navigator.mediaDevices.getUserMedia({ 
+            video: callType !== 'audio' ? { width: { ideal: 720 }, height: { ideal: 480 } } : false, 
+            audio: true 
+        })
+        .then(stream => {
+            localStream = stream;
+            document.getElementById('localVideo').srcObject = stream;
+            document.getElementById('localVideo').play();
+
+            currentCall = call;
+            isCallActive = true;
+            callStatus = 'connected';
+
+            // عرض نافذة المكالمة
+            if (callType !== 'audio') {
+                document.getElementById('callModal').style.display = 'flex';
+                document.getElementById('callUserName').textContent = caller.UserName;
+                document.getElementById('callUserAvatar').src = caller.UserAvatar || 
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(caller.UserName)}&background=667eea&color=fff&rounded=true`;
+                document.getElementById('remoteName').textContent = caller.UserName;
+                document.getElementById('callStatusText').textContent = '📹 متصل';
+                document.getElementById('callStatusText').className = 'call-status-text connected';
+                document.getElementById('callUserStatus').textContent = '📹 متصل';
+                document.getElementById('callUserStatus').className = 'call-status connected';
+            } else {
+                document.getElementById('audioCallModal').style.display = 'flex';
+                document.getElementById('audioCallUserName').textContent = caller.UserName;
+                document.getElementById('audioCallUserAvatar').src = caller.UserAvatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(caller.UserName)}&background=667eea&color=fff&rounded=true`;
+                document.getElementById('audioCallAvatar').src = caller.UserAvatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(caller.UserName)}&background=667eea&color=fff&rounded=true&size=200`;
+                document.getElementById('audioCallName').textContent = caller.UserName;
+                document.getElementById('audioCallStatus').textContent = '📞 متصل';
+                document.getElementById('audioCallStatus').className = 'audio-call-status connected';
+                document.getElementById('audioCallUserStatus').textContent = '📞 متصل';
+                document.getElementById('audioCallUserStatus').className = 'call-status connected';
+                
+                // تشغيل المؤقت
+                audioCallSeconds = 0;
+                if (audioCallTimerInterval) clearInterval(audioCallTimerInterval);
+                audioCallTimerInterval = setInterval(() => {
+                    audioCallSeconds++;
+                    const mins = String(Math.floor(audioCallSeconds / 60)).padStart(2, '0');
+                    const secs = String(audioCallSeconds % 60).padStart(2, '0');
+                    document.getElementById('audioCallTimer').textContent = `${mins}:${secs}`;
+                }, 1000);
+            }
+
+            call.answer(stream);
+
+            call.on('stream', (remoteStream) => {
+                console.log('📡 تم استلام البث');
+                if (callType !== 'audio') {
+                    document.getElementById('remoteVideo').srcObject = remoteStream;
+                    document.getElementById('remoteVideo').play();
+                    document.getElementById('remotePlaceholder').style.display = 'none';
+                } else {
+                    const audioElement = document.createElement('audio');
+                    audioElement.id = 'audioCallRemoteAudio';
+                    audioElement.srcObject = remoteStream;
+                    audioElement.autoplay = true;
+                    audioElement.volume = 1;
+                    document.body.appendChild(audioElement);
+                    const waves = document.getElementById('audioWaves');
+                    if (waves) waves.className = 'audio-waves active';
+                }
+                showNotification(`📞 متصل مع ${caller.UserName}`, 'success');
+            });
+
+            call.on('close', () => {
+                console.log('📴 تم إغلاق المكالمة');
+                if (isCallActive) {
+                    showNotification(`📴 تم إنهاء المكالمة`, 'info');
+                    if (callType !== 'audio') endCall();
+                    else endAudioCall();
+                }
+            });
+        })
+        .catch(err => {
+            console.error('❌ خطأ في الكاميرا:', err);
+            alert('⚠️ تعذر الوصول إلى الكاميرا والميكروفون');
+            if (callType !== 'audio') endCall();
+            else endAudioCall();
+        });
     } else {
-        startVideoCall(caller.UserID);
+        // fallback: بدء مكالمة جديدة (لكن بدون إرسال إشعار)
+        if (callType === 'audio') {
+            startAudioCall(caller.UserID);
+        } else {
+            startVideoCall(caller.UserID);
+        }
     }
 }
 
@@ -5356,23 +5448,33 @@ function rejectIncomingCall() {
 
     // تسجيل Service Worker
     function registerServiceWorker() {
-        if ('serviceWorker' in navigator) {
-            const basePath = getBasePath();
-            const swUrl = basePath + 'sw.js';
+       if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'ANSWER_CALL') {
+            const { callerId, callerName, callerAvatar, callType } = event.data.payload;
             
-            console.log('📁 تسجيل Service Worker في:', swUrl);
+            // تأكد من وجود مستخدم مسجل
+            if (!currentUser) {
+                showNotification('⚠️ يجب تسجيل الدخول أولاً', 'warning');
+                showLogin();
+                return;
+            }
             
-            navigator.serviceWorker.register(swUrl, {
-                scope: basePath
-            })
-            .then((registration) => {
-                console.log('✅ Service Worker مسجل بنجاح');
-                console.log('📌 النطاق:', registration.scope);
-            })
-            .catch((error) => {
-                console.error('❌ فشل التسجيل:', error);
-            });
+            // البحث عن المستخدم
+            let caller = registeredUsers.find(u => u.UserID === callerId);
+            if (!caller) {
+                caller = {
+                    UserID: callerId,
+                    UserName: callerName || 'مستخدم',
+                    UserAvatar: callerAvatar || 'https://ui-avatars.com/api/?name=User&background=667eea&color=fff&rounded=true'
+                };
+            }
+            
+            // إظهار نافذة المكالمة الواردة
+            showIncomingCallModal(caller, callType || 'video');
         }
+    });
+}
     }
 
     // تشغيل التسجيل عند تحميل الصفحة
