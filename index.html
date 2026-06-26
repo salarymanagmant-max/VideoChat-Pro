@@ -1,21 +1,27 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VideoChat Pro - مكالمات فيديو متطورة</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes" />
+    <title>VideoChat Pro</title>
     
-    <!-- PWA Meta Tags -->
-    <link rel="manifest" href="./manifest.json">
+    <!-- الخطوط -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ====== إعدادات PWA (مأخوذة من المشروع الناجح) ====== -->
+    <link rel="manifest" href="./manifest.json?v=4">
     <meta name="theme-color" content="#667eea">
+    
+    <!-- أيقونات PWA -->
+    <link rel="icon" type="image/png" sizes="192x192" href="https://ui-avatars.com/api/?name=VC&background=667eea&color=fff&size=192">
+    <link rel="icon" type="image/png" sizes="512x512" href="https://ui-avatars.com/api/?name=VC&background=667eea&color=fff&size=512">
+    
+    <!-- إعدادات iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VideoChat Pro">
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=VC&background=667eea&color=fff&size=192">
-    <link rel="icon" href="https://ui-avatars.com/api/?name=VC&background=667eea&color=fff&size=64">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 
     <style>
@@ -2203,6 +2209,14 @@
         
         .bg-status .dot.inactive {
             background: #95a5a6;
+        }
+         /* أنماطك الحالية */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #fff;
         }
     </style>
 </head>
@@ -5389,194 +5403,7 @@ function rejectIncomingCall() {
             }
         }
 
-        // ================================================================
-        //                      تثبيت التطبيق (PWA)
-        // ================================================================
-let deferredPrompt = null;
 
-// ✅ تحديد المسار الصحيح تلقائياً
-function getBasePath() {
-    // الحصول على المسار الكامل
-    const pathname = window.location.pathname;
-    
-    // إذا كان المسار ينتهي بـ /، استخدمه كما هو
-    if (pathname.endsWith('/')) {
-        return pathname;
-    }
-    
-    // وإلا أضف / في النهاية
-    return pathname + '/';
-}
-
-// ✅ تسجيل Service Worker بالطريقة الصحيحة
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        const basePath = getBasePath();
-        
-        // استخدام المسار الكامل
-        const swUrl = window.location.origin + basePath + 'sw.js';
-        
-        console.log('📁 المسار الكامل:', swUrl);
-        console.log('📁 النطاق:', basePath);
-        
-        navigator.serviceWorker.register(swUrl, {
-            scope: basePath
-        })
-        .then((registration) => {
-            console.log('✅ Service Worker مسجل بنجاح');
-            console.log('📌 النطاق:', registration.scope);
-            
-            // التحقق من التثبيت
-            checkInstallation();
-        })
-        .catch((error) => {
-            console.error('❌ فشل التسجيل:', error);
-            // محاولة بديلة
-            tryAlternativeRegistration();
-        });
-    }
-}
-
-// ✅ محاولة بديلة للتسجيل
-function tryAlternativeRegistration() {
-    if ('serviceWorker' in navigator) {
-        const basePath = getBasePath();
-        const swUrl = basePath + 'sw.js';
-        
-        navigator.serviceWorker.register(swUrl)
-        .then((registration) => {
-            console.log('✅ Service Worker مسجل (بديل):', registration.scope);
-        })
-        .catch((error) => {
-            console.error('❌ فشل التسجيل البديل:', error);
-        });
-    }
-}
-
-// ✅ التحقق من التثبيت
-function checkInstallation() {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('✅ التطبيق يعمل كـ PWA');
-        document.body.classList.add('installed');
-    } else {
-        console.log('📱 التطبيق يعمل في المتصفح');
-    }
-}
-
-// ✅ حدث التثبيت
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    console.log('✅ حدث beforeinstallprompt تم تفعيله');
-    
-    // إظهار زر التثبيت
-    showInstallButton();
-});
-
-// ✅ إظهار زر التثبيت
-function showInstallButton() {
-    const installPrompt = document.getElementById('installPrompt');
-    if (!installPrompt) return;
-    
-    installPrompt.innerHTML = `
-        <div style="flex: 1;">
-            <strong style="color: #fff; font-size: 1rem;">📱 تثبيت التطبيق</strong>
-            <p style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin: 2px 0 0;">
-                احصل على تجربة أفضل مع VideoChat Pro
-            </p>
-        </div>
-        <button class="btn-install" onclick="installApp()" style="
-            padding: 8px 20px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border: none;
-            border-radius: 10px;
-            color: white;
-            font-family: 'Tajawal', sans-serif;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        ">
-            <i class="fas fa-download"></i> تثبيت
-        </button>
-        <button onclick="closeInstallPrompt()" style="
-            background: none;
-            border: none;
-            color: rgba(255,255,255,0.5);
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 0 5px;
-        ">✕</button>
-    `;
-    installPrompt.classList.add('show');
-}
-
-// ✅ دالة التثبيت
-function installApp() {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('✅ تم تثبيت التطبيق');
-                document.getElementById('installPrompt').classList.remove('show');
-                showNotification('🎉 تم تثبيت التطبيق بنجاح!', 'success');
-            } else {
-                console.log('❌ تم رفض تثبيت التطبيق');
-            }
-            deferredPrompt = null;
-        });
-    } else {
-        showNotification('⚠️ انتظر قليلاً ثم حاول مرة أخرى', 'warning');
-    }
-}
-
-// ✅ إغلاق نافذة التثبيت
-function closeInstallPrompt() {
-    document.getElementById('installPrompt').classList.remove('show');
-    localStorage.setItem('installPromptClosed', 'true');
-}
-
-// ✅ تشغيل عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 بدء تشغيل التطبيق');
-    registerServiceWorker();
-    
-    // التحقق من وضع التثبيت
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('✅ التطبيق مثبت ويعمل كـ PWA');
-        document.getElementById('installPrompt')?.classList.remove('show');
-    }
-    
-    // محاولة إظهار الزر بعد 3 ثواني
-    setTimeout(() => {
-        const installPrompt = document.getElementById('installPrompt');
-        if (installPrompt && !installPrompt.classList.contains('show') && deferredPrompt) {
-            installPrompt.classList.add('show');
-        }
-    }, 3000);
-});
-
-// ✅ مراقبة تغيير وضع العرض
-window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
-    if (e.matches) {
-        console.log('✅ تم تثبيت التطبيق');
-        document.getElementById('installPrompt')?.classList.remove('show');
-    }
-});
-
-// ✅ حدث نجاح التثبيت
-window.addEventListener('appinstalled', () => {
-    console.log('✅ تم تثبيت التطبيق بنجاح');
-    document.getElementById('installPrompt')?.classList.remove('show');
-    showNotification('🎉 تم تثبيت التطبيق بنجاح!', 'success');
-});
-
-// ✅ التحقق من الإغلاق السابق
-if (localStorage.getItem('installPromptClosed') === 'true') {
-    document.getElementById('installPrompt')?.classList.remove('show');
-}
-
-console.log('✅ نظام التثبيت جاهز!');
-console.log('📁 المسار:', window.location.pathname);
         // ================================================================
         //                      مشاركة التطبيق
         // ================================================================
@@ -6355,6 +6182,145 @@ console.log('📁 المسار:', window.location.pathname);
             console.log('🔑 المستخدم الحالي:', currentUser ? currentUser.UserName : 'غير مسجل');
             console.log('🔔 عدد الإشعارات:', notificationCount);
         });
+
+                // ================================================================
+        //                      تثبيت التطبيق (PWA)
+        // ================================================================
+ let deferredPrompt;
+        
+        // ✅ تسجيل Service Worker (بنفس طريقة المشروع الناجح)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(function(registration) {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('❌ Service Worker error:', error);
+                    });
+            });
+        }
+        
+        // ✅ حدث التثبيت (بنفس طريقة المشروع الناجح)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallButtonInPage();
+        });
+        
+        // ✅ إظهار زر التثبيت (بنفس طريقة المشروع الناجح)
+        function showInstallButtonInPage() {
+            if (document.getElementById('pwaInstallBtn')) return;
+            
+            const installContainer = document.createElement('div');
+            installContainer.id = 'pwaInstallContainer';
+            installContainer.style.cssText = `
+                position: fixed; 
+                bottom: 20px; 
+                left: 50%; 
+                transform: translateX(-50%); 
+                z-index: 9999; 
+                width: auto; 
+                text-align: center;
+            `;
+            
+            const installBtn = document.createElement('button');
+            installBtn.id = 'pwaInstallBtn';
+            installBtn.innerHTML = '📱 تثبيت التطبيق';
+            installBtn.style.cssText = `
+                background: linear-gradient(135deg, #667eea, #764ba2); 
+                color: white; 
+                border: none; 
+                border-radius: 10px; 
+                padding: 14px 28px; 
+                font-size: 16px; 
+                font-weight: bold; 
+                cursor: pointer; 
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+                transition: all 0.3s ease; 
+                font-family: 'Tajawal', sans-serif; 
+                display: flex; 
+                align-items: center; 
+                gap: 8px; 
+                margin: 0 auto;
+            `;
+            
+            installBtn.onmouseover = () => { 
+                installBtn.style.transform = 'scale(1.05)'; 
+                installBtn.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)'; 
+            };
+            installBtn.onmouseout = () => { 
+                installBtn.style.transform = 'scale(1)'; 
+                installBtn.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)'; 
+            };
+            
+            installBtn.onclick = async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    hideInstallButton();
+                    showToastMessage('🎉 تم تثبيت التطبيق بنجاح!', 'success');
+                }
+                deferredPrompt = null;
+            };
+            
+            installContainer.appendChild(installBtn);
+            document.body.appendChild(installContainer);
+        }
+        
+        // ✅ إخفاء زر التثبيت
+        function hideInstallButton() {
+            const container = document.getElementById('pwaInstallContainer');
+            if (container) {
+                container.style.transition = 'opacity 0.3s ease';
+                container.style.opacity = '0';
+                setTimeout(() => { 
+                    if (container && container.parentNode) container.remove(); 
+                }, 300);
+            }
+        }
+        
+        // ✅ التحقق من التثبيت
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            console.log('📱 التطبيق يعمل بشكل مثبت');
+            hideInstallButton();
+        }
+        
+        // ✅ حدث نجاح التثبيت
+        window.addEventListener('appinstalled', () => { 
+            hideInstallButton(); 
+        });
+        
+        // ✅ دالة الإشعارات
+        function showToastMessage(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; 
+                top: 20px; 
+                left: 50%; 
+                transform: translateX(-50%); 
+                background: ${type === 'success' ? '#2e7d32' : '#0d6efd'}; 
+                color: white; 
+                padding: 12px 24px; 
+                border-radius: 50px; 
+                z-index: 100000; 
+                font-weight: bold; 
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+                font-family: 'Tajawal', sans-serif; 
+                font-size: 14px; 
+                text-align: center; 
+                white-space: nowrap;
+            `;
+            toast.innerHTML = `✅ ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                setTimeout(() => toast.remove(), 300); 
+            }, 3000);
+        }
+        
+        console.log('✅ كود PWA يعمل');
     </script>
 </body>
 </html>
