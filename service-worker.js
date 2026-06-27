@@ -1,4 +1,4 @@
-const CACHE_NAME = "videochat-v6";
+const CACHE_NAME = "videochat-v7";
 
 const urlsToCache = [
   "./",
